@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>傅里叶级数曲线绘制器</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+        }
+        h1 {
+            text-align: center;
+            margin: 0 0 20px 0;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            flex-shrink: 0;
+        }
+        .main-area {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            overflow: hidden;
+        }
+        .panel-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .panel {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            position: relative;
+        }
+        .draw-panel {
+            margin-right: 10px;
+        }
+        .viz-panel {
+            margin-left: 10px;
+        }
+        .panel-header {
+            flex-shrink: 0;
+            margin-bottom: 10px;
+        }
+        .zoom-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 10;
+        }
+        .zoom-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .zoom-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        .zoom-level {
+            font-size: 10px;
+            text-align: center;
+            margin: 2px 0;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .panel-content {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+        }
+        canvas {
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+            display: block;
+            background: rgba(0, 0, 0, 0.2);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        #drawCanvas {
+            cursor: crosshair;
+        }
+        #vizCanvas {
+            cursor: grab;
+        }
+        #vizCanvas.grabbing {
+            cursor: grabbing;
+        }
+        .controls {
+            margin-top: 15px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        button {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 3px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .info {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 13px;
+            line-height: 1.5;
+            flex-shrink: 0;
+        }
+        .slider-container {
+            margin: 10px 0;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.3);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4ECDC4;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .epicycles-info {
+            font-size: 12px;
+            color: rgba(255,255,255,0.8);
+            margin-top: 10px;
+        }
+        .mode-toggle {
+            margin-bottom: 10px;
+        }
+        .mode-toggle label {
+            display: inline;
+            margin: 0 10px;
+            font-weight: normal;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        /* 新增：傅里叶系数显示区域样式 */
+        .coefficients-section {
+            margin-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding-top: 15px;
+            flex-shrink: 0;
+        }
+        .coefficients-toggle {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-bottom: 10px;
+            transition: background 0.2s;
+        }
+        .coefficients-toggle:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        .coefficients-content {
+            display: none;
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .coefficients-content.show {
+            display: block;
+        }
+        .coefficients-table {
+            width: 100%;
+            font-size: 12px;
+            border-collapse: collapse;
+        }
+        .coefficients-table th,
+        .coefficients-table td {
+            padding: 6px 4px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .coefficients-table th {
+            background: rgba(255, 255, 255, 0.1);
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+        .coefficients-table td {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .coefficients-table tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .coefficient-bar {
+            height: 4px;
+            background: linear-gradient(to right, #4ECDC4, #FFD93D);
+            border-radius: 2px;
+            margin: 2px auto;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 傅里叶级数曲线绘制器：湖南大学数学学院王兴</h1>
+        
+        <div class="main-area">
+            <!-- 绘制面板 -->
+            <div class="panel-wrapper">
+                <div class="panel draw-panel">
+                    <div class="panel-header">
+                        <h2>步骤 1: 绘制图形</h2>
+                        <div class="mode-toggle">
+                            <label><input type="radio" name="mode" value="draw" checked> 绘制模式</label>
+                            <label><input type="radio" name="mode" value="view"> 查看模式</label>
+                        </div>
+                    </div>
+                    <div class="panel-content">
+                        <div class="zoom-controls">
+                            <button class="zoom-btn" id="drawZoomIn">+</button>
+                            <div class="zoom-level" id="drawZoomLevel">100%</div>
+                            <button class="zoom-btn" id="drawZoomOut">−</button>
+                        </div>
+                        <canvas id="drawCanvas"></canvas>
+                    </div>
+                    <div class="controls">
+                        <button id="clearBtn">🗑️ 清空画布</button>
+                        <button id="exampleBtn">🌟 示例图形</button>
+                        <button id="analyzeBtn" disabled>🔍 分析图形</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 可视化面板 -->
+            <div class="panel-wrapper">
+                <div class="panel viz-panel">
+                    <div class="panel-header">
+                        <h2>步骤 2: 观看傅里叶级数重构</h2>
+                    </div>
+                    <div class="panel-content">
+                        <div class="zoom-controls">
+                            <button class="zoom-btn" id="vizZoomIn">+</button>
+                            <div class="zoom-level" id="vizZoomLevel">100%</div>
+                            <button class="zoom-btn" id="vizZoomOut">−</button>
+                        </div>
+                        <canvas id="vizCanvas"></canvas>
+                    </div>
+                    <div class="controls">
+                        <button id="playBtn" disabled>▶️ 播放</button>
+                        <button id="pauseBtn" disabled>⏸️ 暂停</button>
+                        <button id="resetBtn" disabled>🔄 重置</button>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label for="speedSlider">动画速度: <span id="speedValue">1.0</span>x</label>
+                        <input type="range" id="speedSlider" min="0.1" max="5" step="0.1" value="1" disabled>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label for="circlesSlider">显示圆圈数量: <span id="circlesValue">20</span></label>
+                        <input type="range" id="circlesSlider" min="1" max="100" step="1" value="20" disabled>
+                    </div>
+                    
+                    <div class="epicycles-info" id="epicyclesInfo">
+                        请绘制图形并点击"分析图形"开始
+                    </div>
+                    
+                    <!-- 新增：傅里叶系数显示区域 -->
+                    <div class="coefficients-section">
+                        <button class="coefficients-toggle" id="coeffToggle">📊 显示傅里叶系数</button>
+                        <div class="coefficients-content" id="coeffContent">
+                            <table class="coefficients-table">
+                                <thead>
+                                    <tr>
+                                        <th>序号</th>
+                                        <th>频率</th>
+                                        <th>振幅</th>
+                                        <th>相位 (°)</th>
+                                        <th>可视化</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="coeffTableBody">
+                                    <!-- 动态生成 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let drawCanvas, drawCtx, vizCanvas, vizCtx;
+        let isDrawing = false;
+        let drawnPoints = [];
+        let fourierCoefficients = [];
+        let animationId = null;
+        let time = 0;
+        let animationSpeed = 1;
+        let numCirclesToShow = 20;
+        let isPlaying = false;
+        let trailPoints = [];
+
+        // 缩放和平移参数
+        let drawZoom = 1.0;
+        let drawPanX = 0;
+        let drawPanY = 0;
+        let vizZoom = 1.0;
+        let vizPanX = 0;
+        let vizPanY = 0;
+        let isPanning = false;
+        let lastPanX = 0;
+        let lastPanY = 0;
+
+        // 新增：显示/隐藏系数
+        let showCoefficients = false;
+
+        // 初始化
+        window.onload = function() {
+            // 获取画布
+            drawCanvas = document.getElementById('drawCanvas');
+            drawCtx = drawCanvas.getContext('2d');
+            vizCanvas = document.getElementById('vizCanvas');
+            vizCtx = vizCanvas.getContext('2d');
+            
+            // 设置画布尺寸
+            resizeCanvases();
+            window.addEventListener('resize', resizeCanvases);
+            
+            // 绑定事件
+            bindEvents();
+            bindZoomControls();
+            
+            // 新增：系数显示切换按钮事件
+            document.getElementById('coeffToggle').addEventListener('click', toggleCoefficients);
+            
+            // 绘制初始状态
+            redrawDrawing();
+            drawAxes(vizCtx, vizCanvas);
+        };
+
+        function resizeCanvases() {
+            // 设置高DPI支持
+            const dpr = window.devicePixelRatio || 1;
+            
+            // 绘制画布
+            const drawWidth = drawCanvas.offsetWidth;
+            const drawHeight = drawCanvas.offsetHeight;
+            drawCanvas.width = drawWidth * dpr;
+            drawCanvas.height = drawHeight * dpr;
+            drawCtx.scale(dpr, dpr);
+            
+            // 可视化画布
+            const vizWidth = vizCanvas.offsetWidth;
+            const vizHeight = vizCanvas.offsetHeight;
+            vizCanvas.width = vizWidth * dpr;
+            vizCanvas.height = vizHeight * dpr;
+            vizCtx.scale(dpr, dpr);
+            
+            // 重绘
+            redrawDrawing();
+            if (!isPlaying) {
+                drawAxes(vizCtx, vizCanvas);
+            }
+        }
+
+        function bindEvents() {
+            // 绘制事件
+            drawCanvas.addEventListener('mousedown', startDrawing);
+            drawCanvas.addEventListener('mousemove', draw);
+            drawCanvas.addEventListener('mouseup', stopDrawing);
+            drawCanvas.addEventListener('mouseout', stopDrawing);
+            
+            // 触摸事件
+            drawCanvas.addEventListener('touchstart', handleTouch);
+            drawCanvas.addEventListener('touchmove', handleTouch);
+            drawCanvas.addEventListener('touchend', stopDrawing);
+            
+            // 可视化画布拖拽
+            vizCanvas.addEventListener('mousedown', startPanning);
+            vizCanvas.addEventListener('mousemove', doPanning);
+            vizCanvas.addEventListener('mouseup', stopPanning);
+            vizCanvas.addEventListener('mouseleave', stopPanning);
+            
+            // 滚轮缩放
+            drawCanvas.addEventListener('wheel', handleWheelZoom);
+            vizCanvas.addEventListener('wheel', handleWheelZoom);
+            
+            // 按钮事件
+            document.getElementById('clearBtn').addEventListener('click', clearCanvas);
+            document.getElementById('exampleBtn').addEventListener('click', loadExample);
+            document.getElementById('analyzeBtn').addEventListener('click', analyzeDrawing);
+            document.getElementById('playBtn').addEventListener('click', playAnimation);
+            document.getElementById('pauseBtn').addEventListener('click', pauseAnimation);
+            document.getElementById('resetBtn').addEventListener('click', resetAnimation);
+            
+            // 滑块事件
+            document.getElementById('speedSlider').addEventListener('input', function(e) {
+                animationSpeed = parseFloat(e.target.value);
+                document.getElementById('speedValue').textContent = animationSpeed.toFixed(1);
+            });
+            
+            document.getElementById('circlesSlider').addEventListener('input', function(e) {
+                numCirclesToShow = parseInt(e.target.value);
+                document.getElementById('circlesValue').textContent = numCirclesToShow;
+            });
+            
+            // 模式切换
+            document.querySelectorAll('input[name="mode"]').forEach(radio => {
+                radio.addEventListener('change', function(e) {
+                    if (e.target.value === 'view') {
+                        drawCanvas.style.cursor = 'default';
+                        drawReconstructedPath();
+                    } else {
+                        drawCanvas.style.cursor = 'crosshair';
+                        redrawDrawing();
+                    }
+                });
+            });
+        }
+
+        function bindZoomControls() {
+            // 绘制画布缩放
+            document.getElementById('drawZoomIn').addEventListener('click', () => {
+                drawZoom = Math.min(drawZoom * 1.2, 5.0);
+                updateZoomDisplay('draw', drawZoom);
+                redrawDrawing();
+            });
+            
+            document.getElementById('drawZoomOut').addEventListener('click', () => {
+                drawZoom = Math.max(drawZoom / 1.2, 0.2);
+                updateZoomDisplay('draw', drawZoom);
+                redrawDrawing();
+            });
+            
+            // 可视化画布缩放
+            document.getElementById('vizZoomIn').addEventListener('click', () => {
+                vizZoom = Math.min(vizZoom * 1.2, 5.0);
+                updateZoomDisplay('viz', vizZoom);
+            });
+            
+            document.getElementById('vizZoomOut').addEventListener('click', () => {
+                vizZoom = Math.max(vizZoom / 1.2, 0.2);
+                updateZoomDisplay('viz', vizZoom);
+            });
+            
+            updateZoomDisplay('draw', drawZoom);
+            updateZoomDisplay('viz', vizZoom);
+        }
+
+        function updateZoomDisplay(panel, zoom) {
+            const level = Math.round(zoom * 100);
+            document.getElementById(`${panel}ZoomLevel`).textContent = `${level}%`;
+        }
+
+        function handleWheelZoom(e) {
+            e.preventDefault();
+            const isDrawCanvas = e.target.id === 'drawCanvas';
+            const currentZoom = isDrawCanvas ? drawZoom : vizZoom;
+            
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            const newZoom = Math.max(0.2, Math.min(5.0, currentZoom * delta));
+            
+            if (isDrawCanvas) {
+                drawZoom = newZoom;
+                updateZoomDisplay('draw', drawZoom);
+                redrawDrawing();
+            } else {
+                vizZoom = newZoom;
+                updateZoomDisplay('viz', vizZoom);
+            }
+        }
+
+        function startPanning(e) {
+            isPanning = true;
+            lastPanX = e.clientX;
+            lastPanY = e.clientY;
+            vizCanvas.classList.add('grabbing');
+        }
+
+        function doPanning(e) {
+            if (!isPanning) return;
+            
+            const dx = e.clientX - lastPanX;
+            const dy = e.clientY - lastPanY;
+            
+            vizPanX += dx;
+            vizPanY += dy;
+            
+            lastPanX = e.clientX;
+            lastPanY = e.clientY;
+        }
+
+        function stopPanning() {
+            isPanning = false;
+            vizCanvas.classList.remove('grabbing');
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = drawCanvas.getBoundingClientRect();
+            
+            const mouseX = (touch.clientX - rect.left - drawPanX) / drawZoom;
+            const mouseY = (touch.clientY - rect.top - drawPanY) / drawZoom;
+            
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                            e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: rect.left + mouseX,
+                clientY: rect.top + mouseY
+            });
+            drawCanvas.dispatchEvent(mouseEvent);
+        }
+
+        function startDrawing(e) {
+            if (document.querySelector('input[name="mode"]:checked').value !== 'draw') return;
+            
+            const rect = drawCanvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left - drawPanX) / drawZoom;
+            const y = (e.clientY - rect.top - drawPanY) / drawZoom;
+            
+            isDrawing = true;
+            drawnPoints = [{x, y}];
+            
+            redrawDrawing();
+        }
+
+        function draw(e) {
+            if (!isDrawing || document.querySelector('input[name="mode"]:checked').value !== 'draw') return;
+            
+            const rect = drawCanvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left - drawPanX) / drawZoom;
+            const y = (e.clientY - rect.top - drawPanY) / drawZoom;
+            
+            drawnPoints.push({x, y});
+            redrawDrawing();
+        }
+
+        function stopDrawing() {
+            if (isDrawing) {
+                isDrawing = false;
+                if (drawnPoints.length > 10) {
+                    document.getElementById('analyzeBtn').disabled = false;
+                }
+            }
+        }
+
+        function clearCanvas() {
+            drawnPoints = [];
+            fourierCoefficients = [];
+            time = 0;
+            trailPoints = [];
+            
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            drawAxes(drawCtx, drawCanvas);
+            vizCtx.clearRect(0, 0, vizCanvas.width, vizCanvas.height);
+            drawAxes(vizCtx, vizCanvas);
+            
+            document.getElementById('analyzeBtn').disabled = true;
+            document.getElementById('playBtn').disabled = true;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('resetBtn').disabled = true;
+            document.getElementById('speedSlider').disabled = true;
+            document.getElementById('circlesSlider').disabled = true;
+            document.getElementById('epicyclesInfo').textContent = '请绘制图形并点击"分析图形"开始';
+            
+            // 新增：清空系数表格
+            document.getElementById('coeffTableBody').innerHTML = '';
+            
+            pauseAnimation();
+            
+            drawZoom = 1.0;
+            drawPanX = 0;
+            drawPanY = 0;
+            vizZoom = 1.0;
+            vizPanX = 0;
+            vizPanY = 0;
+            updateZoomDisplay('draw', drawZoom);
+            updateZoomDisplay('viz', vizZoom);
+        }
+
+        function loadExample() {
+            clearCanvas();
+            
+            setTimeout(() => {
+                const centerX = drawCanvas.offsetWidth / 2;
+                const centerY = drawCanvas.offsetHeight / 2;
+                const minDim = Math.min(centerX, centerY);
+                
+                // 修改：缩小3倍 (0.25 -> 0.0833)
+                const scale = minDim * 0.05;
+                
+                drawnPoints = [];
+                const numPoints = 400;
+                
+                for (let i = 0; i <= numPoints; i++) {
+                    const t = (i / numPoints) * 2 * Math.PI;
+                    const x = centerX + scale * 16 * Math.pow(Math.sin(t), 3);
+                    const y = centerY - scale * (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+                    
+                    if (isFinite(x) && isFinite(y)) {
+                        drawnPoints.push({x, y});
+                    }
+                }
+                
+                redrawDrawing();
+                document.getElementById('analyzeBtn').disabled = false;
+            }, 50);
+        }
+
+        function redrawDrawing() {
+            const width = drawCanvas.offsetWidth;
+            const height = drawCanvas.offsetHeight;
+            
+            drawCtx.clearRect(0, 0, width, height);
+            
+            // 应用缩放和平移
+            drawCtx.save();
+            drawCtx.translate(drawPanX, drawPanY);
+            drawCtx.scale(drawZoom, drawZoom);
+            
+            // 绘制坐标轴
+            drawAxes(drawCtx, drawCanvas);
+            
+            // 绘制路径
+            if (drawnPoints.length > 1) {
+                drawCtx.strokeStyle = '#4ECDC4';
+                drawCtx.lineWidth = 3 / drawZoom;
+                drawCtx.lineCap = 'round';
+                drawCtx.lineJoin = 'round';
+                drawCtx.beginPath();
+                drawCtx.moveTo(drawnPoints[0].x, drawnPoints[0].y);
+                for (let i = 1; i < drawnPoints.length; i++) {
+                    drawCtx.lineTo(drawnPoints[i].x, drawnPoints[i].y);
+                }
+                drawCtx.stroke();
+            }
+            
+            drawCtx.restore();
+        }
+
+        function drawAxes(ctx, canvas) {
+            const width = canvas.offsetWidth / drawZoom;
+            const height = canvas.offsetHeight / drawZoom;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.lineWidth = 2 / drawZoom;
+            ctx.setLineDash([10 / drawZoom, 10 / drawZoom]);
+            
+            // X轴
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(width, centerY);
+            ctx.stroke();
+            
+            // Y轴
+            ctx.beginPath();
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, height);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+
+        function analyzeDrawing() {
+            if (drawnPoints.length < 10) return;
+            
+            const centerX = drawCanvas.offsetWidth / 2;
+            const centerY = drawCanvas.offsetHeight / 2;
+            
+            // 转换为复数（考虑缩放）
+            const complexPoints = drawnPoints.map(p => ({
+                re: (p.x - centerX) / drawZoom,
+                im: (p.y - centerY) / drawZoom
+            }));
+            
+            fourierCoefficients = dft(complexPoints);
+            
+            // 新增：显示傅里叶系数
+            displayFourierCoefficients();
+            
+            document.getElementById('playBtn').disabled = false;
+            document.getElementById('resetBtn').disabled = false;
+            document.getElementById('speedSlider').disabled = false;
+            document.getElementById('circlesSlider').disabled = false;
+            
+            document.getElementById('epicyclesInfo').innerHTML = `
+                <strong>分析完成！</strong><br>
+                • 共计算 ${fourierCoefficients.length} 个频率分量<br>
+                • 最高振幅: ${fourierCoefficients[0].amp.toFixed(2)}<br>
+                • 点击播放查看动画 或 查看下方系数详情
+            `;
+            
+            if (document.querySelector('input[name="mode"]:checked').value === 'view') {
+                drawReconstructedPath();
+            }
+        }
+
+        // 新增：显示傅里叶系数
+        function displayFourierCoefficients() {
+            const tbody = document.getElementById('coeffTableBody');
+            tbody.innerHTML = ''; // 清空现有内容
+            
+            const maxAmp = fourierCoefficients[0].amp; // 用于归一化显示
+            
+            // 显示前20个最重要的系数
+            const displayCount = Math.min(20, fourierCoefficients.length);
+            
+            for (let i = 0; i < displayCount; i++) {
+                const coeff = fourierCoefficients[i];
+                
+                const row = document.createElement('tr');
+                
+                // 序号
+                const indexCell = document.createElement('td');
+                indexCell.textContent = i + 1;
+                row.appendChild(indexCell);
+                
+                // 频率
+                const freqCell = document.createElement('td');
+                freqCell.textContent = coeff.freq;
+                row.appendChild(freqCell);
+                
+                // 振幅
+                const ampCell = document.createElement('td');
+                ampCell.textContent = coeff.amp.toFixed(2);
+                row.appendChild(ampCell);
+                
+                // 相位（转换为角度）
+                const phaseCell = document.createElement('td');
+                const phaseDeg = (coeff.phase * 180 / Math.PI).toFixed(1);
+                phaseCell.textContent = phaseDeg + '°';
+                row.appendChild(phaseCell);
+                
+                // 可视化条
+                const visualCell = document.createElement('td');
+                const bar = document.createElement('div');
+                bar.className = 'coefficient-bar';
+                const barWidth = Math.max(1, (coeff.amp / maxAmp) * 100);
+                bar.style.width = barWidth + '%';
+                visualCell.appendChild(bar);
+                row.appendChild(visualCell);
+                
+                tbody.appendChild(row);
+            }
+            
+            // 自动显示系数区域
+            document.getElementById('coeffContent').classList.add('show');
+            document.getElementById('coeffToggle').textContent = '📊 隐藏傅里叶系数';
+            showCoefficients = true;
+        }
+
+        // 新增：切换系数显示/隐藏
+        function toggleCoefficients() {
+            showCoefficients = !showCoefficients;
+            const content = document.getElementById('coeffContent');
+            const toggle = document.getElementById('coeffToggle');
+            
+            if (showCoefficients) {
+                content.classList.add('show');
+                toggle.textContent = '📊 隐藏傅里叶系数';
+            } else {
+                content.classList.remove('show');
+                toggle.textContent = '📊 显示傅里叶系数';
+            }
+        }
+
+        function dft(points) {
+            const N = points.length;
+            const coeffs = [];
+            
+            for (let k = 0; k < N; k++) {
+                let sumRe = 0, sumIm = 0;
+                
+                for (let n = 0; n < N; n++) {
+                    const angle = -2 * Math.PI * k * n / N;
+                    sumRe += points[n].re * Math.cos(angle) - points[n].im * Math.sin(angle);
+                    sumIm += points[n].re * Math.sin(angle) + points[n].im * Math.cos(angle);
+                }
+                
+                sumRe /= N;
+                sumIm /= N;
+                
+                const amp = Math.sqrt(sumRe*sumRe + sumIm*sumIm);
+                const phase = Math.atan2(sumIm, sumRe);
+                const signedFreq = k > N/2 ? k - N : k;
+                
+                coeffs.push({re: sumRe, im: sumIm, amp, freq: signedFreq, phase});
+            }
+            
+            coeffs.sort((a, b) => b.amp - a.amp);
+            return coeffs;
+        }
+
+        function drawReconstructedPath() {
+            if (fourierCoefficients.length === 0) return;
+            
+            const ctx = drawCtx;
+            const width = drawCanvas.offsetWidth;
+            const height = drawCanvas.offsetHeight;
+            
+            ctx.clearRect(0, 0, width, height);
+            ctx.save();
+            ctx.translate(drawPanX, drawPanY);
+            ctx.scale(drawZoom, drawZoom);
+            
+            const numCoeffs = Math.min(40, fourierCoefficients.length);
+            const coeffsToUse = fourierCoefficients.slice(0, numCoeffs);
+            
+            const reconstructedPoints = [];
+            const N = 1000;
+            
+            for (let i = 0; i <= N; i++) {
+                const t = i / N;
+                let x = 0, y = 0;
+                
+                for (let j = 0; j < numCoeffs; j++) {
+                    const coeff = coeffsToUse[j];
+                    const angle = 2 * Math.PI * coeff.freq * t + coeff.phase;
+                    x += coeff.amp * Math.cos(angle);
+                    y += coeff.amp * Math.sin(angle);
+                }
+                
+                if (isFinite(x) && isFinite(y)) {
+                    reconstructedPoints.push({
+                        x: x + width / 2 / drawZoom,
+                        y: y + height / 2 / drawZoom
+                    });
+                }
+            }
+            
+            drawAxes(ctx, drawCanvas);
+            
+            // 绘制原始路径
+            if (drawnPoints.length > 1) {
+                ctx.strokeStyle = 'rgba(78, 205, 196, 0.3)';
+                ctx.lineWidth = 3 / drawZoom;
+                ctx.beginPath();
+                ctx.moveTo(drawnPoints[0].x, drawnPoints[0].y);
+                for (let i = 1; i < drawnPoints.length; i++) {
+                    ctx.lineTo(drawnPoints[i].x, drawnPoints[i].y);
+                }
+                ctx.stroke();
+            }
+            
+            // 绘制重构路径
+            if (reconstructedPoints.length > 1) {
+                ctx.strokeStyle = '#FFD93D';
+                ctx.lineWidth = 2 / drawZoom;
+                ctx.setLineDash([5 / drawZoom, 5 / drawZoom]);
+                ctx.beginPath();
+                ctx.moveTo(reconstructedPoints[0].x, reconstructedPoints[0].y);
+                for (let i = 1; i < reconstructedPoints.length; i++) {
+                    ctx.lineTo(reconstructedPoints[i].x, reconstructedPoints[i].y);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
+            ctx.restore();
+        }
+
+        function playAnimation() {
+            if (fourierCoefficients.length === 0) return;
+            
+            isPlaying = true;
+            trailPoints = [];
+            document.getElementById('playBtn').disabled = true;
+            document.getElementById('pauseBtn').disabled = false;
+            
+            animate();
+        }
+
+        function pauseAnimation() {
+            isPlaying = false;
+            document.getElementById('playBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+        }
+
+        function resetAnimation() {
+            pauseAnimation();
+            time = 0;
+            trailPoints = [];
+            vizCtx.clearRect(0, 0, vizCanvas.width, vizCanvas.height);
+            drawAxes(vizCtx, vizCanvas);
+        }
+
+        function animate() {
+            if (!isPlaying) return;
+            
+            const width = vizCanvas.offsetWidth;
+            const height = vizCanvas.offsetHeight;
+            
+            vizCtx.clearRect(0, 0, width, height);
+            vizCtx.save();
+            vizCtx.translate(vizPanX, vizPanY);
+            vizCtx.scale(vizZoom, vizZoom);
+            
+            const numCoeffs = Math.min(numCirclesToShow, fourierCoefficients.length);
+            const coeffsToUse = fourierCoefficients.slice(0, numCoeffs);
+            
+            const centerX = width / 2 / vizZoom;
+            const centerY = height / 2 / vizZoom;
+            
+            let x = centerX;
+            let y = centerY;
+            
+            vizCtx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            vizCtx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            vizCtx.lineWidth = 1 / vizZoom;
+            
+            for (let i = 0; i < numCoeffs; i++) {
+                const coeff = coeffsToUse[i];
+                
+                const lastX = x;
+                const lastY = y;
+                
+                const angle = 2 * Math.PI * coeff.freq * time + coeff.phase;
+                x += coeff.amp * Math.cos(angle);
+                y += coeff.amp * Math.sin(angle);
+                
+                vizCtx.beginPath();
+                vizCtx.arc(lastX, lastY, coeff.amp, 0, 2 * Math.PI);
+                vizCtx.stroke();
+                
+                vizCtx.beginPath();
+                vizCtx.moveTo(lastX, lastY);
+                vizCtx.lineTo(x, y);
+                vizCtx.stroke();
+                
+                vizCtx.beginPath();
+                vizCtx.arc(x, y, 3 / vizZoom, 0, 2 * Math.PI);
+                vizCtx.fill();
+            }
+            
+            // 绘制轨迹
+            if (trailPoints.length > 1) {
+                vizCtx.strokeStyle = '#FFD93D';
+                vizCtx.lineWidth = 2 / vizZoom;
+                vizCtx.beginPath();
+                vizCtx.moveTo((trailPoints[0].x - vizPanX) / vizZoom, (trailPoints[0].y - vizPanY) / vizZoom);
+                for (let i = 1; i < trailPoints.length; i++) {
+                    vizCtx.lineTo((trailPoints[i].x - vizPanX) / vizZoom, (trailPoints[i].y - vizPanY) / vizZoom);
+                }
+                vizCtx.stroke();
+            }
+            
+            vizCtx.fillStyle = '#FF6B6B';
+            vizCtx.beginPath();
+            vizCtx.arc(x, y, 4 / vizZoom, 0, 2 * Math.PI);
+            vizCtx.fill();
+            
+            vizCtx.restore();
+            
+            // 保存轨迹点
+            trailPoints.push({
+                x: x * vizZoom + vizPanX,
+                y: y * vizZoom + vizPanY
+            });
+            
+            if (trailPoints.length > 2000) {
+                trailPoints.shift();
+            }
+            
+            time += 0.005 * animationSpeed;
+            
+            if (time >= 1.0) {
+                time = 0;
+                trailPoints = [];
+            }
+            
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // 防止页面滚动
+        document.addEventListener('touchmove', function(e) {
+            if (e.target === drawCanvas || e.target === vizCanvas) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    </script>
+</body>
+</html>
