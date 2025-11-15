@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的主页</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #2c3e50);
+            min-height: 100vh;
+            padding: 20px;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 40px 0;
+            text-align: center;
+            margin-bottom: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at top right, rgba(41, 128, 185, 0.3), transparent 70%);
+            z-index: -1;
+        }
+
+        header h1 {
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.8;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .links-section {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .links-section h2 {
+            color: #fff;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+            font-weight: 400;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .link-item {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .link-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            border-color: rgba(52, 152, 219, 0.3);
+        }
+
+        .link-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(52, 152, 219, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .link-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: #3498db;
+        }
+
+        .link-content {
+            flex: 1;
+        }
+
+        .link-title {
+            font-size: 1.2em;
+            color: #fff;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .link-url {
+            color: #a0c0d0;
+            font-size: 0.9em;
+            word-break: break-all;
+            font-family: monospace;
+        }
+
+        .link-description {
+            color: #b0c4de;
+            font-size: 0.95em;
+            margin-top: 5px;
+        }
+
+        .add-link-btn {
+            background: rgba(52, 152, 219, 0.2);
+            color: white;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+
+        .add-link-btn:hover {
+            background: rgba(41, 128, 185, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: relative;
+            background: rgba(30, 40, 60, 0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            margin: 10% auto;
+            padding: 30px;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #a0c0d0;
+            transition: color 0.3s;
+        }
+
+        .close:hover {
+            color: #fff;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #b0c4de;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-size: 1em;
+            color: #fff;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: rgba(52, 152, 219, 0.5);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .submit-btn {
+            background: rgba(52, 152, 219, 0.3);
+            color: white;
+            border: 1px solid rgba(52, 152, 219, 0.4);
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            width: 100%;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+
+        .submit-btn:hover {
+            background: rgba(41, 128, 185, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2.2em;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+            
+            .links-section {
+                padding: 20px;
+            }
+            
+            .link-item {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>我的个人主页</h1>
+            <p>分享精彩的内容</p>
+        </header>
+
+        <div class="links-section">
+            <h2>收藏链接</h2>
+            <div id="linksContainer">
+                <div class="link-item">
+                    <div class="link-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                    </div>
+                    <div class="link-content">
+                        <div class="link-title">傅里叶级数绘画</div>
+                        <div class="link-url">https://xinggu.github.io/Teaching/画图-带采样.html</div>
+                        <div class="link-description">一个有趣的傅里叶级数绘画应用，可以通过数学原理绘制图形</div>
+                    </div>
+                </div>
+            </div>
+            <button class="add-link-btn" onclick="openModal()">添加新链接</button>
+        </div>
+    </div>
+
+    <!-- 添加链接的模态框 -->
+    <div id="addLinkModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 style="color: #fff; margin-bottom: 25px; font-weight: 400;">添加新链接</h2>
+            <form id="addLinkForm">
+                <div class="form-group">
+                    <label for="linkTitle">标题</label>
+                    <input type="text" id="linkTitle" required placeholder="请输入链接标题">
+                </div>
+                <div class="form-group">
+                    <label for="linkUrl">URL</label>
+                    <input type="url" id="linkUrl" required placeholder="https://example.com">
+                </div>
+                <div class="form-group">
+                    <label for="linkDescription">描述（可选）</label>
+                    <textarea id="linkDescription" placeholder="请输入链接描述"></textarea>
+                </div>
+                <button type="submit" class="submit-btn">添加链接</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 打开模态框
+        function openModal() {
+            document.getElementById('addLinkModal').style.display = 'block';
+        }
+
+        // 关闭模态框
+        function closeModal() {
+            document.getElementById('addLinkModal').style.display = 'none';
+            document.getElementById('addLinkForm').reset();
+        }
+
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('addLinkModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+
+        // 处理表单提交
+        document.getElementById('addLinkForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('linkTitle').value;
+            const url = document.getElementById('linkUrl').value;
+            const description = document.getElementById('linkDescription').value || '暂无描述';
+            
+            // 创建新的链接项
+            const linkItem = document.createElement('div');
+            linkItem.className = 'link-item';
+            linkItem.innerHTML = `
+                <div class="link-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                <div class="link-content">
+                    <div class="link-title">${title}</div>
+                    <div class="link-url">${url}</div>
+                    <div class="link-description">${description}</div>
+                </div>
+            `;
+            
+            // 添加到链接容器
+            document.getElementById('linksContainer').appendChild(linkItem);
+            
+            // 关闭模态框
+            closeModal();
+            
+            // 显示成功提示
+            showNotification('链接添加成功！');
+        });
+
+        // 显示通知
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: rgba(52, 152, 219, 0.9);
+                color: white;
+                padding: 15px 25px;
+                border-radius: 8px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+                z-index: 2000;
+                animation: slideIn 0.3s ease;
+                backdrop-filter: blur(5px);
+                -webkit-backdrop-filter: blur(5px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 3000);
+        }
+
+        // 添加动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 链接点击处理
+        document.getElementById('linksContainer').addEventListener('click', function(e) {
+            const linkItem = e.target.closest('.link-item');
+            if (linkItem) {
+                const url = linkItem.querySelector('.link-url').textContent;
+                window.open(url, '_blank');
+            }
+        });
+    </script>
+</body>
+</html>
